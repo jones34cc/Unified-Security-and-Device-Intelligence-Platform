@@ -2,7 +2,7 @@
 
 ## 📸 Dashboard Preview
 
-![USD Dashboard](/unified Security.png)
+![USD Dashboard](dashboard.png)
 
 ## 📌 Overview
 
