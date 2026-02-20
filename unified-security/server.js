@@ -26,9 +26,14 @@ mongoose.connect(process.env.MONGO_URI)
 function getLocalSubnet() {
     const interfaces = os.networkInterfaces();
 
-    for (let interfaceName in interfaces) {
-        for (let iface of interfaces[interfaceName]) {
-            if (iface.family === "IPv4" && !iface.internal) {
+    for (let name in interfaces) {
+        for (let iface of interfaces[name]) {
+            if (
+                iface.family === "IPv4" &&
+                !iface.internal &&
+                !name.toLowerCase().includes("vmware") &&
+                !name.toLowerCase().includes("virtual")
+            ) {
                 const ipParts = iface.address.split(".");
                 return `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.0/24`;
             }
@@ -46,7 +51,7 @@ app.post("/scan", async (req, res) => {
 
         console.log("Scanning subnet:", subnet);
 
-        const { stdout } = await execPromise(`nmap -sn ${subnet}`);
+        const { stdout } = await execPromise(`nmap -sn -PR ${subnet}`);
 
         const devices = [];
         const lines = stdout.split("\n").map(line => line.trim());
@@ -103,7 +108,18 @@ app.post("/scan", async (req, res) => {
 app.get("/devices", async (req, res) => {
     try {
         const devices = await Device.find().sort({ lastSeen: -1 });
-        res.json(devices);
+
+        const updatedDevices = devices.map(device => {
+            const fiveMinutes = 5 * 60 * 1000;
+            const isActive = (Date.now() - new Date(device.lastSeen).getTime()) < fiveMinutes;
+
+            return {
+                ...device._doc,
+                status: isActive ? "Active" : "Inactive"
+            };
+        });
+
+        res.json(updatedDevices);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to fetch devices" });
