@@ -84,11 +84,3 @@ The frontend dashboard provides:
 - Dashboard UI with dynamic risk visualization
 
 ---
-
-## ⚙️ Installation Guide
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone <your-repository-url>
-cd USD
