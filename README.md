@@ -1,164 +1,94 @@
-🛡️ USD – Unified Security Dashboard
-📌 Overview
+# 🛡️ USD – Unified Security Dashboard
+
+## 📌 Overview
 
 USD (Unified Security Dashboard) is a network security monitoring system that:
 
-Discovers devices connected to your local network
-
-Detects open ports using Nmap
-
-Performs OS fingerprinting
-
-Assigns risk levels based on exposed services
-
-Displays results in a real-time dashboard
+- Discovers devices connected to the local network
+- Detects open ports using Nmap
+- Performs OS fingerprinting
+- Assigns risk levels based on exposed services
+- Displays results in a real-time security dashboard
 
 This project demonstrates practical cybersecurity concepts including:
 
-Network scanning
+- Network discovery
+- Port enumeration
+- OS detection
+- Risk scoring
+- Device monitoring
 
-Port enumeration
+---
 
-Risk scoring
+## 🚀 Features
 
-Device classification
+### 🔎 Network Discovery
+- ARP-based host discovery (`nmap -sn -PR`)
+- Automatic subnet detection
+- Active device identification
 
-Vulnerability surface assessment
+### 🧠 OS Detection
+- Uses `nmap -O` for OS fingerprinting
+- Displays detected operating system (if available)
 
-🚀 Features
-🔎 Network Discovery
+### 🌐 Port Scanning
+- SYN scan (`-sS`) on top 20 common ports
+- Extracts and stores open ports per device
 
-Uses ARP-based scanning (nmap -sn -PR)
+### ⚠️ Risk Scoring Engine
 
-Automatically detects local subnet
+Risk level is determined based on exposed services:
 
-Identifies active devices
+| Port | Risk Level |
+|------|------------|
+| 21 (FTP) | High |
+| 23 (Telnet) | High |
+| 3389 (RDP) | High |
+| 22 (SSH) | Medium |
+| 139, 445 (SMB) | Medium |
 
-🧠 OS Detection
+Devices are categorized as:
 
-Uses nmap -O for OS fingerprinting
+- 🟢 Low Risk
+- 🟠 Medium Risk
+- 🔴 High Risk
 
-Displays detected operating system (if available)
+---
 
-🌐 Port Scanning
+## 📊 Dashboard Interface
 
-Scans top 20 common ports using SYN scan
+The frontend dashboard provides:
 
-Extracts open ports per device
+- Total Devices
+- Active Devices
+- High Risk Devices
+- Open Ports per Device
+- OS Detection Results
+- Color-coded Risk & Status indicators
 
-⚠️ Risk Scoring Engine
+---
 
-Risk is calculated based on exposed ports:
+## 🏗️ Tech Stack
 
-Port	Risk
-21 (FTP)	High
-23 (Telnet)	High
-3389 (RDP)	High
-22 (SSH)	Medium
-139, 445 (SMB)	Medium
+### Backend
+- Node.js
+- Express.js
+- MongoDB Atlas
+- Mongoose
+- Nmap
+- Axios
 
-Devices are classified as:
+### Frontend
+- React.js
+- REST API integration
+- Dashboard UI with dynamic risk visualization
 
-Low Risk
+---
 
-Medium Risk
+## ⚙️ Installation Guide
 
-High Risk
+### 1️⃣ Clone the Repository
 
-📊 Dashboard Interface
-
-Total Devices
-
-Active Devices
-
-High Risk Devices
-
-Open Ports per Device
-
-Color-coded Risk & Status
-
-🏗️ Tech Stack
-Backend
-
-Node.js
-
-Express
-
-MongoDB Atlas
-
-Mongoose
-
-Nmap
-
-Axios
-
-Frontend
-
-React
-
-REST API integration
-
-Dashboard UI
-
-⚙️ Installation Guide
-1️⃣ Clone Repository
-git clone <your-repo-url>
+```bash
+git clone <your-repository-url>
 cd USD
-2️⃣ Backend Setup
-cd unified-security
-npm install
-
-Create a .env file:
-
-MONGO_URI=your_mongodb_connection_string
-
-Start server (Run as Administrator for OS detection):
-
-nodemon server.js
-3️⃣ Frontend Setup
-cd usd-frontend
-npm install
-npm start
-
-Frontend runs at:
-
-http://localhost:3000
-⚠️ Important Notes
-
-Nmap must be installed and added to system PATH.
-
-For OS detection (-O) and SYN scan (-sS), backend must run with Administrator privileges.
-
-Some modern devices use randomized MAC addresses, making vendor detection unreliable.
-
-Smartphones often block port scanning for security reasons.
-
-🧠 Security Disclaimer
-
-This project is intended for:
-
-Educational purposes
-
-Testing on your own network
-
-Ethical security experimentation
-
-Do not scan networks you do not own or have permission to test.
-
-📈 Future Improvements
-
-CVE vulnerability lookup
-
-Device fingerprint classification engine
-
-Graph-based risk visualization
-
-Automated alerts
-
-Agent-based deep monitoring
-
-👨‍💻 Author
-
-Satyabrata Das
-Computer Science & Engineering
-Cybersecurity Enthusiast
