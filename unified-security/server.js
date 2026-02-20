@@ -2,21 +2,24 @@ const express = require("express");
 const cors = require("cors");
 const os = require("os");
 const { exec } = require("child_process");
+const util = require("util");
+const execPromise = util.promisify(exec);
 const mongoose = require("mongoose");
+require("dotenv").config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+const Device = require("./models/Device");
 
 
+require("dns").setServers(["1.1.1.1", "8.8.8.8"]);
 
-
-
-
-
-//database connection
-mongoose.connect("mongodb+srv://admin:linux@cluster0.agngd0u.mongodb.net//usd")
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB Connected"))
-.catch(err => console.error(err));
+.catch(err => console.error("Mongo Error:", err));
+
+
+
 
 
 
@@ -32,57 +35,80 @@ function getLocalSubnet() {
         }
     }
 }
-app.post("/scan", (req, res) => {
 
-    const subnet = getLocalSubnet();
+app.post("/scan", async (req, res) => {
+    try {
+        const subnet = getLocalSubnet();
 
-    if (!subnet) {
-        return res.status(500).json({ error: "Could not detect subnet" });
-    }
-
-    exec(`nmap -sn ${subnet}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(error);
-            return res.status(500).json({ error: "Scan failed" });
+        if (!subnet) {
+            return res.status(500).json({ error: "Could not detect subnet" });
         }
 
         console.log("Scanning subnet:", subnet);
+
+        const { stdout } = await execPromise(`nmap -sn ${subnet}`);
+
         const devices = [];
-const lines = stdout.split("\n").map(line => line.trim());
+        const lines = stdout.split("\n").map(line => line.trim());
 
-let currentDevice = {};
+        let currentDevice = {};
 
-for (let line of lines) {
+        for (let line of lines) {
+            if (line.includes("Nmap scan report for")) {
+                const ip = line.split(" ").pop().trim();
+                currentDevice = { ip };
+            }
 
-    if (line.includes("Nmap scan report for")) {
-        const ip = line.split(" ").pop().trim();
+            if (line.includes("MAC Address")) {
+                const parts = line.split(" ");
+                const mac = parts[2];
+                const vendor = parts.slice(3).join(" ")
+                    .replace("(", "")
+                    .replace(")", "")
+                    .trim();
 
-        currentDevice = { ip };
+                currentDevice.mac = mac;
+                currentDevice.vendor = vendor;
+                devices.push(currentDevice);
+            }
+        }
+
+        // Save devices
+        for (let device of devices) {
+            await Device.findOneAndUpdate(
+                { ip: device.ip },
+                {
+                    ip: device.ip,
+                    mac: device.mac,
+                    vendor: device.vendor,
+                    lastSeen: new Date()
+                },
+                { upsert: true, new: true }
+            );
+        }
+
+        res.json({
+            message: "Scan completed",
+            subnet,
+            devices
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Scan failed" });
     }
-
-    if (line.includes("MAC Address")) {
-        const parts = line.split(" ");
-        const mac = parts[2];
-        const vendor = parts.slice(3).join(" ")
-    .replace("(", "")
-    .replace(")", "")
-    .trim();
-
-        currentDevice.mac = mac;
-        currentDevice.vendor = vendor;
-        devices.push(currentDevice);
-    }
-}
-
-res.json({
-    message: "Scan completed",
-    subnet,
-    devices
 });
 
-    });
-});
 
+app.get("/devices", async (req, res) => {
+    try {
+        const devices = await Device.find().sort({ lastSeen: -1 });
+        res.json(devices);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch devices" });
+    }
+});
 
 app.get("/", (req, res) => {
     
