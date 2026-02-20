@@ -1,5 +1,9 @@
 # 🛡️ USD – Unified Security Dashboard
 
+## 📸 Dashboard Preview
+
+![USD Dashboard](unified Security)
+
 ## 📌 Overview
 
 USD (Unified Security Dashboard) is a network security monitoring system that:
