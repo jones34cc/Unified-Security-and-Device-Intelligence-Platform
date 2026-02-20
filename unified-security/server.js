@@ -10,6 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 const Device = require("./models/Device");
+const axios = require("axios");
 
 
 require("dns").setServers(["1.1.1.1", "8.8.8.8"]);
@@ -40,6 +41,16 @@ function getLocalSubnet() {
         }
     }
 }
+async function lookupVendor(mac) {
+    try {
+        // const cleanMac = mac.replace(/:/g, "").substring(0, 6);
+    
+        const response = await axios.get(`https://api.macvendors.com/48555E`);
+        return response.data;
+    } catch (error) {
+        return "Unknown";
+    }
+}
 
 app.post("/scan", async (req, res) => {
     try {
@@ -67,25 +78,86 @@ app.post("/scan", async (req, res) => {
             if (line.includes("MAC Address")) {
                 const parts = line.split(" ");
                 const mac = parts[2];
-                const vendor = parts.slice(3).join(" ")
-                    .replace("(", "")
-                    .replace(")", "")
-                    .trim();
+
+                let finalVendor = await lookupVendor(mac);
 
                 currentDevice.mac = mac;
-                currentDevice.vendor = vendor;
+                currentDevice.vendor = finalVendor;
+
                 devices.push(currentDevice);
             }
         }
 
-        // Save devices
+        // Now process each device
         for (let device of devices) {
+
+            // -------------------
+            // OS Detection
+            // -------------------
+            let osInfo = "Unknown";
+
+            try {
+                const { stdout: osOutput } = await execPromise(`nmap -O ${device.ip}`);
+                const osLines = osOutput.split("\n");
+
+                for (let line of osLines) {
+                    if (line.includes("OS details:")) {
+                        osInfo = line.replace("OS details:", "").trim();
+                        break;
+                    }
+                    if (line.includes("Running:")) {
+                        osInfo = line.replace("Running:", "").trim();
+                    }
+                }
+            } catch (err) {
+                console.log("OS detection failed for", device.ip);
+            }
+
+            // -------------------
+            // Port Scanning
+            // -------------------
+            let openPorts = [];
+
+            try {
+                const { stdout: portOutput } = await execPromise(`nmap -sS --top-ports 20 ${device.ip}`);
+                const portLines = portOutput.split("\n");
+
+                for (let line of portLines) {
+                    if (line.includes("/tcp") && line.includes("open")) {
+                        const port = parseInt(line.split("/")[0]);
+                        openPorts.push(port);
+                    }
+                }
+            } catch (err) {
+                console.log("Port scan failed for", device.ip);
+            }
+
+            // -------------------
+            // Risk Scoring Logic
+            // -------------------
+            let riskLevel = "Low";
+
+            const highRiskPorts = [21, 23, 3389];
+            const mediumRiskPorts = [22, 139, 445];
+
+            if (openPorts.some(port => highRiskPorts.includes(port))) {
+                riskLevel = "High";
+            } else if (openPorts.some(port => mediumRiskPorts.includes(port))) {
+                riskLevel = "Medium";
+            }
+
+            // -------------------
+            // Save to Database
+            // -------------------
             await Device.findOneAndUpdate(
                 { ip: device.ip },
                 {
                     ip: device.ip,
                     mac: device.mac,
                     vendor: device.vendor,
+                    os: osInfo,
+                    openPorts: openPorts,
+                    riskLevel: riskLevel,
                     lastSeen: new Date()
                 },
                 { upsert: true, new: true }
@@ -103,7 +175,6 @@ app.post("/scan", async (req, res) => {
         res.status(500).json({ error: "Scan failed" });
     }
 });
-
 
 app.get("/devices", async (req, res) => {
     try {
